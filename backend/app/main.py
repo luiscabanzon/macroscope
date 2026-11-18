@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.graph_routes import router as graph_router
+from app.api.micro_routes import router as micro_router
 from app.api.routes import router as api_router
 from app.config import settings
 from app.db.database import get_connection, init_db
@@ -24,6 +25,14 @@ async def lifespan(app: FastAPI):
             if row and row[0] == 0:
                 from app.services.seed_news import seed_news_database
                 await seed_news_database()
+
+        async with conn.execute("SELECT count(*) FROM observations WHERE source = 'SEC EDGAR'") as cursor:
+            row = await cursor.fetchone()
+            if row and row[0] == 0:
+                from app.data.cik_mapping import get_seed_fundamentals
+                from app.db.database import upsert_observations
+                fundamentals = get_seed_fundamentals()
+                await upsert_observations(conn, fundamentals)
     yield
 
 
@@ -46,6 +55,7 @@ app.add_middleware(
 # Attach API routes under /api/v1
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(graph_router, prefix="/api/v1")
+app.include_router(micro_router, prefix="/api/v1")
 
 
 @app.get("/", tags=["Root"])

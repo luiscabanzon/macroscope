@@ -1,0 +1,132 @@
+{
+  "cik": 320193,
+  "entityName": "Apple Inc.",
+  "facts": {
+    "us-gaap": {
+      "Revenues": {
+        "label": "Revenues",
+        "description": "Total revenue",
+        "units": {
+          "USD": [
+            {
+              "end": "2023-09-30",
+              "val": 383285000000,
+              "fy": 2023,
+              "fp": "FY",
+              "form": "10-K",
+              "filed": "2023-11-03"
+            },
+            {
+              "end": "2024-03-30",
+              "val": 90753000000,
+              "fy": 2024,
+              "fp": "Q2",
+              "form": "10-Q",
+              "filed": "2024-05-03"
+            },
+            {
+              "end": "2024-06-29",
+              "val": 85777000000,
+              "fy": 2024,
+              "fp": "Q3",
+              "form": "10-Q",
+              "filed": "2024-08-02"
+            }
+          ]
+        }
+      },
+      "NetIncomeLoss": {
+        "label": "Net Income Loss",
+        "units": {
+          "USD": [
+            {
+              "end": "2023-09-30",
+              "val": 96995000000,
+              "fy": 2023,
+              "fp": "FY",
+              "form": "10-K",
+              "filed": "2023-11-03"
+            },
+            {
+              "end": "2024-03-30",
+              "val": 23636000000,
+              "fy": 2024,
+              "fp": "Q2",
+              "form": "10-Q",
+              "filed": "2024-05-03"
+            }
+          ]
+        }
+      },
+      "OperatingIncomeLoss": {
+        "label": "Operating Income Loss",
+        "units": {
+          "USD": [
+            {
+              "end": "2023-09-30",
+              "val": 114301000000,
+              "fy": 2023,
+              "fp": "FY",
+              "form": "10-K",
+              "filed": "2023-11-03"
+            },
+            {
+              "end": "2024-03-30",
+              "val": 27900000000,
+              "fy": 2024,
+              "fp": "Q2",
+              "form": "10-Q",
+              "filed": "2024-05-03"
+            }
+          ]
+        }
+      },
+      "GrossProfit": {
+        "label": "Gross Profit",
+        "units": {
+          "USD": [
+            {
+              "end": "2023-09-30",
+              "val": 169148000000,
+              "fy": 2023,
+              "fp": "FY",
+              "form": "10-K",
+              "filed": "2023-11-03"
+            },
+            {
+              "end": "2024-03-30",
+              "val": 42271000000,
+              "fy": 2024,
+              "fp": "Q2",
+              "form": "10-Q",
+              "filed": "2024-05-03"
+            }
+          ]
+        }
+      },
+      "ResearchAndDevelopmentExpense": {
+        "label": "R&D",
+        "units": {
+          "USD": [
+            {
+              "end": "2023-09-30",
+              "val": 29915000000,
+              "fy": 2023,
+              "fp": "FY",
+              "form": "10-K",
+              "filed": "2023-11-03"
+            },
+            {
+              "end": "2024-03-30",
+              "val": 7907000000,
+              "fy": 2024,
+              "fp": "Q2",
+              "form": "10-Q",
+              "filed": "2024-05-03"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import logging
 from app.providers.base import BaseDataProvider
 from app.providers.fred_csv import FredCsvProvider
+from app.providers.sec_edgar import SecEdgarProvider
 from app.providers.world_bank import WorldBankProvider
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,8 @@ class ProviderRegistry:
 def create_default_registry() -> ProviderRegistry:
     """Build the standard production provider registry."""
     registry = ProviderRegistry()
+    # Microeconomic corporate fundamentals from SEC EDGAR
+    registry.register(SecEdgarProvider())
     # FRED takes precedence for high-frequency commodities and US series
     registry.register(FredCsvProvider())
     # World Bank provides broad global coverage for annual macroeconomic series

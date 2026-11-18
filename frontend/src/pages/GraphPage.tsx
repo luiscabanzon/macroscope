@@ -5,7 +5,11 @@ import { GraphControls } from '../components/graph/GraphControls.tsx';
 import { NewsDrawer } from '../components/graph/NewsDrawer.tsx';
 import { Loader2, AlertCircle } from 'lucide-react';
 
-export const GraphPage: React.FC = () => {
+interface GraphPageProps {
+  onDeepDive?: (ticker: string) => void;
+}
+
+export const GraphPage: React.FC<GraphPageProps> = ({ onDeepDive }) => {
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const canvasRef = useRef<GraphCanvasRef>(null);
@@ -68,6 +72,7 @@ export const GraphPage: React.FC = () => {
         ticker={selectedTicker}
         onClose={() => setSelectedTicker(null)}
         onSelectCompany={handleSelectCompany}
+        onDeepDive={onDeepDive}
       />
     </div>
   );

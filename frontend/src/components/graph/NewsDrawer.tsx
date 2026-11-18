@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, RefreshCw, ExternalLink, Calendar, ArrowRight, Building, Radio } from 'lucide-react';
+import { X, RefreshCw, ExternalLink, Calendar, ArrowRight, Building, Radio, FileText } from 'lucide-react';
 import { useCompany, useCompanyNews, useRefreshCompanyNews } from '../../api/useGraph.ts';
 import { SECTOR_COLORS, DEFAULT_COLOR } from './GraphControls.tsx';
 
@@ -7,11 +7,17 @@ interface NewsDrawerProps {
   ticker: string | null;
   onClose: () => void;
   onSelectCompany: (ticker: string) => void;
+  onDeepDive?: (ticker: string) => void;
 }
 
 type NewsTab = 'company' | 'competitors' | 'sector';
 
-export const NewsDrawer: React.FC<NewsDrawerProps> = ({ ticker, onClose, onSelectCompany }) => {
+export const NewsDrawer: React.FC<NewsDrawerProps> = ({
+  ticker,
+  onClose,
+  onSelectCompany,
+  onDeepDive,
+}) => {
   const [activeTab, setActiveTab] = useState<NewsTab>('company');
   const { data: company, isLoading: isCompanyLoading } = useCompany(ticker);
   const { data: news, isLoading: isNewsLoading, isFetching: isNewsFetching } = useCompanyNews(ticker);
@@ -76,6 +82,22 @@ export const NewsDrawer: React.FC<NewsDrawerProps> = ({ ticker, onClose, onSelec
               <Building className="w-3.5 h-3.5 text-slate-500" />
               <span>{company?.industry}</span>
             </p>
+
+            {onDeepDive && company && (
+              <button
+                onClick={() => onDeepDive(company.ticker)}
+                className="mt-3 w-full flex items-center justify-between py-2 px-3 rounded-lg bg-gradient-to-r from-cyan-950/60 to-blue-950/60 hover:from-cyan-900/60 hover:to-blue-900/60 border border-cyan-500/30 hover:border-cyan-400/60 text-cyan-300 hover:text-white text-xs font-semibold shadow-sm transition-all group"
+              >
+                <div className="flex items-center space-x-2">
+                  <FileText className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+                  <span>Deep Dive Fundamentals</span>
+                </div>
+                <span className="flex items-center space-x-1 text-[11px] text-cyan-400/80 group-hover:text-cyan-200">
+                  <span>SEC EDGAR</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </span>
+              </button>
+            )}
           </div>
         )}
 
