@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Google News - Technology Sector</title>
+    <link>https://news.google.com</link>
+    <description>Google News search results for technology sector</description>
+    <item>
+      <title>Semiconductor Fab Investments Accelerate Nationwide - Reuters</title>
+      <link>https://news.google.com/rss/articles/CBMiRGh0dHBzOi8vd3d3LnJldXRlcnMuY29tL3RlY2hub2xvZ3kvc2VtaS1mYWItMjAyNi0xMS0xOA</link>
+      <pubDate>Wed, 18 Nov 2026 08:00:00 GMT</pubDate>
+      <guid isPermaLink="false">gn-semi-2001</guid>
+      <description>Leading chipmakers report record high-bandwidth memory shipments for enterprise clusters.</description>
+      <source url="https://www.reuters.com">Reuters</source>
+    </item>
+  </channel>
+</rss>

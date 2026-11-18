@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Yahoo Finance: AAPL News</title>
+    <link>https://finance.yahoo.com/quote/AAPL</link>
+    <description>Latest Financial News for AAPL</description>
+    <language>en-US</language>
+    <item>
+      <title>Apple Expands Enterprise AI Partnerships Across macOS and iOS</title>
+      <link>https://finance.yahoo.com/news/apple-expands-ai-1001.html</link>
+      <pubDate>Wed, 18 Nov 2026 09:30:00 +0000</pubDate>
+      <guid isPermaLink="false">yf-aapl-1001</guid>
+      <description>&lt;p&gt;Apple announced key enterprise deployments and updated hardware roadmap today.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Tech Giants Face Increased Scrutiny in Digital Storefront Policies</title>
+      <link>https://finance.yahoo.com/news/tech-scrutiny-1002.html</link>
+      <pubDate>Tue, 17 Nov 2026 16:45:00 +0000</pubDate>
+      <guid isPermaLink="false">yf-aapl-1002</guid>
+      <description>Regulatory bodies review in-app payment rules across mobile ecosystems.</description>
+    </item>
+  </channel>
+</rss>
