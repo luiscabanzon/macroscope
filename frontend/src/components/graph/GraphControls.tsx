@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Search, ZoomIn, ZoomOut, RotateCcw, X } from 'lucide-react';
-import { GraphNode } from '../../types/graph.ts';
+import { Search, ZoomIn, ZoomOut, RotateCcw, X, Network, Layers, Link2 } from 'lucide-react';
+import { GraphNode, NetworkType } from '../../types/graph.ts';
 
 export const SECTOR_COLORS: Record<string, string> = {
   'Information Technology': '#38bdf8', // sky-400
@@ -22,6 +22,8 @@ interface GraphControlsProps {
   sectors: string[];
   selectedSector: string | null;
   onSelectSector: (sector: string | null) => void;
+  networkType: NetworkType;
+  onSelectNetworkType: (type: NetworkType) => void;
   nodes: GraphNode[];
   onSelectCompany: (ticker: string) => void;
   onZoomIn: () => void;
@@ -33,6 +35,8 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
   sectors,
   selectedSector,
   onSelectSector,
+  networkType,
+  onSelectNetworkType,
   nodes,
   onSelectCompany,
   onZoomIn,
@@ -106,6 +110,48 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
               ))}
             </div>
           )}
+        </div>
+
+        <div className="h-5 w-[1px] bg-slate-800 hidden sm:block" />
+
+        {/* Network Mode Segmented Toggle */}
+        <div className="flex items-center space-x-0.5 bg-slate-950/80 p-0.5 rounded-xl border border-slate-800">
+          <button
+            onClick={() => onSelectNetworkType('all')}
+            title="Show all connections (competition & supply chain)"
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+              networkType === 'all'
+                ? 'bg-slate-800 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Network className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">All Links</span>
+          </button>
+          <button
+            onClick={() => onSelectNetworkType('competition')}
+            title="Show competitor rivalry only"
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+              networkType === 'competition'
+                ? 'bg-slate-800 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden sm:inline">Rivals</span>
+          </button>
+          <button
+            onClick={() => onSelectNetworkType('supply_chain')}
+            title="Show supplier and customer value chain flows"
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+              networkType === 'supply_chain'
+                ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Link2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="hidden sm:inline">Supply Chain</span>
+          </button>
         </div>
 
         <div className="h-5 w-[1px] bg-slate-800 hidden sm:block" />

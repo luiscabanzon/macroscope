@@ -25,6 +25,10 @@ seed:
 	PYTHONPATH=backend $(PYTHON) -m app.services.seed_graph
 	PYTHONPATH=backend $(PYTHON) -m app.services.seed_news
 	PYTHONPATH=backend $(PYTHON) -m app.services.seed_fundamentals
+	PYTHONPATH=backend $(PYTHON) -m app.services.seed_supply_chain
+
+seed-supply-chain:
+	PYTHONPATH=backend $(PYTHON) -m app.services.seed_supply_chain
 
 seed-fundamentals:
 	PYTHONPATH=backend $(PYTHON) -m app.services.seed_fundamentals

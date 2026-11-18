@@ -41,6 +41,15 @@ class CompetitorRecord(BaseModel):
     weight: float = Field(default=1.0, description="Relationship affinity or competition weight")
 
 
+class SupplyChainRecord(BaseModel):
+    """Database record representing a customer-supplier relationship."""
+    supplier_ticker: str = Field(description="Supplying company ticker (e.g. TSM, ASML, NVDA)")
+    customer_ticker: str = Field(description="Customer company ticker (e.g. NVDA, AAPL, MSFT)")
+    product_category: str = Field(description="Critical component or service (e.g. Advanced Foundry Wafers)")
+    tier_or_importance: str = Field(default="critical", description="critical, major, standard")
+    weight: float = Field(default=1.0, description="Dependency weight or critical tier")
+
+
 class NewsArticleRecord(BaseModel):
     """Database record representing a cached public RSS news article."""
     id: int | None = None

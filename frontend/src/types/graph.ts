@@ -1,3 +1,5 @@
+export type NetworkType = 'all' | 'competition' | 'supply_chain';
+
 export interface GraphNode {
   ticker: string;
   name: string;
@@ -6,6 +8,8 @@ export interface GraphNode {
   country_code: string;
   market_cap_tier: string | null;
   competitor_count: number;
+  supplier_count?: number;
+  customer_count?: number;
   description: string | null;
   // D3 simulation coordinates
   x?: number;
@@ -21,6 +25,10 @@ export interface GraphEdge {
   target: string | GraphNode;
   relationship_type: string;
   weight: number;
+  is_directed?: boolean;
+  relationship_category?: 'competition' | 'supply_chain';
+  product_category?: string | null;
+  tier_or_importance?: string | null;
 }
 
 export interface GraphResponse {
@@ -37,6 +45,16 @@ export interface CompetitorItem {
   weight: number;
 }
 
+export interface SupplyChainItem {
+  ticker: string;
+  name: string;
+  industry: string;
+  product_category: string;
+  tier_or_importance: string;
+  weight: number;
+  role: 'supplier' | 'customer';
+}
+
 export interface CompanyDetailResponse {
   ticker: string;
   name: string;
@@ -46,6 +64,8 @@ export interface CompanyDetailResponse {
   market_cap_tier: string | null;
   description: string | null;
   competitors: CompetitorItem[];
+  suppliers: SupplyChainItem[];
+  customers: SupplyChainItem[];
 }
 
 export interface NewsArticleItem {
@@ -65,7 +85,9 @@ export interface CompanyNewsResponse {
   company_name: string;
   sector: string;
   competitor_tickers: string[];
+  supply_chain_tickers: string[];
   company_news: NewsArticleItem[];
   competitor_news: NewsArticleItem[];
   sector_news: NewsArticleItem[];
+  supply_chain_news: NewsArticleItem[];
 }

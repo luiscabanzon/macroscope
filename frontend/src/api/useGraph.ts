@@ -1,12 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchJson } from './client.ts';
-import { CompanyDetailResponse, CompanyNewsResponse, GraphResponse } from '../types/graph.ts';
+import { CompanyDetailResponse, CompanyNewsResponse, GraphResponse, NetworkType } from '../types/graph.ts';
 
-export function useGraph(sector?: string | null) {
+export function useGraph(sector?: string | null, networkType: NetworkType = 'all') {
   return useQuery<GraphResponse>({
-    queryKey: ['graph', sector ?? 'all'],
+    queryKey: ['graph', sector ?? 'all', networkType],
     queryFn: () => {
-      const url = sector ? `/graph?sector=${encodeURIComponent(sector)}` : '/graph';
+      const params = new URLSearchParams();
+      if (sector) params.append('sector', sector);
+      if (networkType && networkType !== 'all') params.append('network_type', networkType);
+      const queryStr = params.toString();
+      const url = queryStr ? `/graph?${queryStr}` : '/graph';
       return fetchJson<GraphResponse>(url);
     },
     staleTime: 1000 * 60 * 5, // 5 mins

@@ -33,6 +33,12 @@ async def lifespan(app: FastAPI):
                 from app.db.database import upsert_observations
                 fundamentals = get_seed_fundamentals()
                 await upsert_observations(conn, fundamentals)
+
+        async with conn.execute("SELECT count(*) FROM company_supply_chain") as cursor:
+            row = await cursor.fetchone()
+            if row and row[0] == 0:
+                from app.services.seed_supply_chain import seed_supply_chain_database
+                await seed_supply_chain_database()
     yield
 
 

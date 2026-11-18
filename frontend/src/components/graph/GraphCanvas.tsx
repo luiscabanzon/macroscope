@@ -144,9 +144,38 @@ export const GraphCanvas = forwardRef<GraphCanvasRef, GraphCanvasProps>(
 
         const activeTicker = selectedTicker;
 
+        // Build connection role lookup when a company is selected
+        const connectedRoles = new Map<string, 'supplier' | 'customer' | 'competitor'>();
+        if (activeTicker) {
+          for (const edge of simEdges) {
+            const isSupply =
+              edge.relationship_category === 'supply_chain' ||
+              edge.relationship_type === 'supply_chain' ||
+              Boolean(edge.is_directed);
+            if (isSupply) {
+              if (edge.target.ticker === activeTicker) {
+                connectedRoles.set(edge.source.ticker, 'supplier');
+              } else if (edge.source.ticker === activeTicker) {
+                connectedRoles.set(edge.target.ticker, 'customer');
+              }
+            } else {
+              if (edge.source.ticker === activeTicker) {
+                connectedRoles.set(edge.target.ticker, 'competitor');
+              } else if (edge.target.ticker === activeTicker) {
+                connectedRoles.set(edge.source.ticker, 'competitor');
+              }
+            }
+          }
+        }
+
         // Draw Edges
         for (const edge of simEdges) {
           const isDirect = edge.relationship_type === 'direct_competitor';
+          const isSupply =
+            edge.relationship_category === 'supply_chain' ||
+            edge.relationship_type === 'supply_chain' ||
+            Boolean(edge.is_directed);
+
           const isConnectedToSelected =
             activeTicker &&
             (edge.source.ticker === activeTicker || edge.target.ticker === activeTicker);
@@ -156,24 +185,68 @@ export const GraphCanvas = forwardRef<GraphCanvasRef, GraphCanvasProps>(
           ctx.lineTo(edge.target.x!, edge.target.y!);
 
           if (isConnectedToSelected) {
-            ctx.strokeStyle = '#38bdf8'; // Cyan glow
+            if (isSupply) {
+              // Target is active -> source is upstream supplier (Amber)
+              // Source is active -> target is downstream customer (Emerald)
+              ctx.strokeStyle = edge.target.ticker === activeTicker ? '#f59e0b' : '#10b981';
+            } else {
+              ctx.strokeStyle = '#38bdf8'; // Cyan glow for rivals
+            }
             ctx.lineWidth = 2.5;
             ctx.globalAlpha = 0.95;
             ctx.setLineDash([]);
           } else if (activeTicker) {
             // Fade out unrelated edges
-            ctx.strokeStyle = '#334155';
-            ctx.lineWidth = 0.8;
-            ctx.globalAlpha = 0.15;
-            ctx.setLineDash(isDirect ? [] : [4, 4]);
+            ctx.strokeStyle = isSupply ? '#064e3b' : '#334155';
+            ctx.lineWidth = 0.7;
+            ctx.globalAlpha = 0.12;
+            ctx.setLineDash(isDirect || isSupply ? [] : [4, 4]);
           } else {
-            ctx.strokeStyle = isDirect ? '#475569' : '#334155';
-            ctx.lineWidth = isDirect ? 1.2 : 0.8;
-            ctx.globalAlpha = isDirect ? 0.45 : 0.25;
-            ctx.setLineDash(isDirect ? [] : [4, 4]);
+            // Default ambient state
+            ctx.strokeStyle = isSupply ? '#10b981' : isDirect ? '#475569' : '#334155';
+            ctx.lineWidth = isSupply ? 1.2 : isDirect ? 1.2 : 0.8;
+            ctx.globalAlpha = isSupply ? 0.45 : isDirect ? 0.45 : 0.25;
+            ctx.setLineDash(isDirect || isSupply ? [] : [4, 4]);
           }
 
           ctx.stroke();
+
+          // Draw Directional Arrowhead for Supply Chain Edges
+          if (
+            isSupply &&
+            edge.source.x !== undefined &&
+            edge.source.y !== undefined &&
+            edge.target.x !== undefined &&
+            edge.target.y !== undefined
+          ) {
+            const dx = edge.target.x - edge.source.x;
+            const dy = edge.target.y - edge.source.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 0) {
+              const uX = dx / dist;
+              const uY = dy / dist;
+              const targetRadius = edge.target.radius;
+              const tipX = edge.target.x - uX * (targetRadius + 5);
+              const tipY = edge.target.y - uY * (targetRadius + 5);
+              const arrowLength = isConnectedToSelected ? 9 : 6;
+              const arrowAngle = Math.atan2(uY, uX);
+              const spread = Math.PI / 6;
+
+              ctx.beginPath();
+              ctx.moveTo(tipX, tipY);
+              ctx.lineTo(
+                tipX - arrowLength * Math.cos(arrowAngle - spread),
+                tipY - arrowLength * Math.sin(arrowAngle - spread)
+              );
+              ctx.lineTo(
+                tipX - arrowLength * Math.cos(arrowAngle + spread),
+                tipY - arrowLength * Math.sin(arrowAngle + spread)
+              );
+              ctx.closePath();
+              ctx.fillStyle = ctx.strokeStyle;
+              ctx.fill();
+            }
+          }
         }
 
         // Draw Nodes
@@ -182,20 +255,37 @@ export const GraphCanvas = forwardRef<GraphCanvasRef, GraphCanvasProps>(
 
           const isSelected = node.ticker === activeTicker;
           const isHovered = hoveredNode?.ticker === node.ticker;
+          const role = activeTicker ? connectedRoles.get(node.ticker) : undefined;
+          const isConnected = isSelected || Boolean(role);
           const color = SECTOR_COLORS[node.sector] ?? DEFAULT_COLOR;
           const radius = node.radius;
 
-          // Outer selection glow
-          if (isSelected || isHovered) {
+          ctx.save();
+          if (activeTicker && !isConnected && !isHovered) {
+            ctx.globalAlpha = 0.35;
+          } else {
+            ctx.globalAlpha = 1.0;
+          }
+
+          // Outer selection or role glow
+          if (isSelected || isHovered || role) {
+            const glowColor = isSelected
+              ? '#38bdf8'
+              : role === 'supplier'
+              ? '#f59e0b'
+              : role === 'customer'
+              ? '#10b981'
+              : color;
+
             ctx.beginPath();
             ctx.arc(node.x, node.y, radius + 7, 0, Math.PI * 2);
-            ctx.fillStyle = `${color}35`;
+            ctx.fillStyle = `${glowColor}35`;
             ctx.fill();
 
             ctx.beginPath();
             ctx.arc(node.x, node.y, radius + 3, 0, Math.PI * 2);
-            ctx.strokeStyle = isSelected ? '#ffffff' : color;
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = isSelected ? '#ffffff' : glowColor;
+            ctx.lineWidth = isSelected ? 2.5 : 1.8;
             ctx.stroke();
           }
 
@@ -215,8 +305,10 @@ export const GraphCanvas = forwardRef<GraphCanvasRef, GraphCanvasProps>(
           ctx.fillStyle = isSelected ? '#38bdf8' : '#f8fafc';
           ctx.fillText(node.ticker, node.x, node.y);
 
-          // Competitor degree badge (small circle on top-right)
-          if (node.competitor_count > 0 && !isSelected) {
+          // Connection count badge (small circle on top-right)
+          const connectionCount =
+            (node.competitor_count ?? 0) + (node.supplier_count ?? 0) + (node.customer_count ?? 0);
+          if (connectionCount > 0 && !isSelected) {
             const badgeX = node.x + radius * 0.7;
             const badgeY = node.y - radius * 0.7;
             ctx.beginPath();
@@ -224,6 +316,8 @@ export const GraphCanvas = forwardRef<GraphCanvasRef, GraphCanvasProps>(
             ctx.fillStyle = color;
             ctx.fill();
           }
+
+          ctx.restore();
         }
 
         ctx.restore();

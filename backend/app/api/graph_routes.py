@@ -8,6 +8,7 @@ from app.schemas.graph import (
     GraphNode,
     GraphResponse,
     NewsArticleItem,
+    SupplyChainItem,
 )
 from app.services.company_graph import CompanyGraphService
 
@@ -18,9 +19,10 @@ graph_service = CompanyGraphService()
 @router.get("/graph", response_model=GraphResponse)
 async def get_company_graph(
     sector: str | None = Query(None, description="Optional sector filter e.g. 'Information Technology'"),
+    network_type: str = Query("all", description="Network filter: 'all', 'competition', or 'supply_chain'"),
 ) -> GraphResponse:
-    """Retrieve company graph nodes and competitor edges for network visualization."""
-    nodes_raw, edges_raw, sectors = await graph_service.get_graph(sector=sector)
+    """Retrieve company graph nodes and edges for network visualization."""
+    nodes_raw, edges_raw, sectors = await graph_service.get_graph(sector=sector, network_type=network_type)
 
     nodes = [GraphNode(**n) for n in nodes_raw]
     edges = [GraphEdge(**e) for e in edges_raw]
@@ -34,8 +36,8 @@ async def get_company_graph(
 
 @router.get("/companies/{ticker}", response_model=CompanyDetailResponse)
 async def get_company_profile(ticker: str) -> CompanyDetailResponse:
-    """Retrieve company details and direct competitor breakdown."""
-    company, competitor_tuples = await graph_service.get_company_profile(ticker)
+    """Retrieve company details, direct competitor breakdown, and supply chain links."""
+    company, competitor_tuples, supply_chain = await graph_service.get_company_profile(ticker)
     if not company:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -53,6 +55,32 @@ async def get_company_profile(ticker: str) -> CompanyDetailResponse:
         for comp, rel_type, weight in competitor_tuples
     ]
 
+    suppliers = [
+        SupplyChainItem(
+            ticker=s["ticker"],
+            name=s["name"],
+            industry=s["industry"],
+            product_category=s["product_category"],
+            tier_or_importance=s["tier_or_importance"],
+            weight=s["weight"],
+            role=s["role"],
+        )
+        for s in supply_chain.get("suppliers", [])
+    ]
+
+    customers = [
+        SupplyChainItem(
+            ticker=c["ticker"],
+            name=c["name"],
+            industry=c["industry"],
+            product_category=c["product_category"],
+            tier_or_importance=c["tier_or_importance"],
+            weight=c["weight"],
+            role=c["role"],
+        )
+        for c in supply_chain.get("customers", [])
+    ]
+
     return CompanyDetailResponse(
         ticker=company.ticker,
         name=company.name,
@@ -62,6 +90,8 @@ async def get_company_profile(ticker: str) -> CompanyDetailResponse:
         market_cap_tier=company.market_cap_tier,
         description=company.description,
         competitors=competitors,
+        suppliers=suppliers,
+        customers=customers,
     )
 
 
@@ -70,7 +100,7 @@ async def get_company_news(
     ticker: str,
     force_refresh: bool = Query(False, description="Bypass cache and fetch fresh RSS feeds"),
 ) -> CompanyNewsResponse:
-    """Retrieve contextual news segmented into Company, Competitor, and Sector headlines."""
+    """Retrieve contextual news segmented into Company, Competitor, Supply Chain, and Sector headlines."""
     news_data = await graph_service.get_contextual_news(ticker, force_refresh=force_refresh)
     company = news_data["company"]
     if not company:
@@ -97,7 +127,9 @@ async def get_company_news(
         company_name=company.name,
         sector=company.sector,
         competitor_tickers=news_data["competitor_tickers"],
+        supply_chain_tickers=news_data.get("supply_chain_tickers", []),
         company_news=[to_item(a) for a in news_data["company_news"]],
         competitor_news=[to_item(a) for a in news_data["competitor_news"]],
         sector_news=[to_item(a) for a in news_data["sector_news"]],
+        supply_chain_news=[to_item(a) for a in news_data.get("supply_chain_news", [])],
     )

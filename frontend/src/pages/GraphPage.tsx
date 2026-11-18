@@ -4,6 +4,7 @@ import { GraphCanvas, GraphCanvasRef } from '../components/graph/GraphCanvas.tsx
 import { GraphControls } from '../components/graph/GraphControls.tsx';
 import { NewsDrawer } from '../components/graph/NewsDrawer.tsx';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { NetworkType } from '../types/graph.ts';
 
 interface GraphPageProps {
   onDeepDive?: (ticker: string) => void;
@@ -11,10 +12,11 @@ interface GraphPageProps {
 
 export const GraphPage: React.FC<GraphPageProps> = ({ onDeepDive }) => {
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
+  const [networkType, setNetworkType] = useState<NetworkType>('all');
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const canvasRef = useRef<GraphCanvasRef>(null);
 
-  const { data: graphData, isLoading, error } = useGraph(selectedSector);
+  const { data: graphData, isLoading, error } = useGraph(selectedSector, networkType);
 
   const handleSelectCompany = (ticker: string) => {
     setSelectedTicker(ticker);
@@ -49,6 +51,8 @@ export const GraphPage: React.FC<GraphPageProps> = ({ onDeepDive }) => {
         sectors={graphData.sectors}
         selectedSector={selectedSector}
         onSelectSector={setSelectedSector}
+        networkType={networkType}
+        onSelectNetworkType={setNetworkType}
         nodes={graphData.nodes}
         onSelectCompany={handleSelectCompany}
         onZoomIn={() => canvasRef.current?.zoomIn()}

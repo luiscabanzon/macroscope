@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
-import { X, RefreshCw, ExternalLink, Calendar, ArrowRight, Building, Radio, FileText } from 'lucide-react';
+import {
+  X,
+  RefreshCw,
+  ExternalLink,
+  Calendar,
+  ArrowRight,
+  Building,
+  Radio,
+  FileText,
+  ArrowDownRight,
+  ArrowUpRight,
+  Link2,
+} from 'lucide-react';
 import { useCompany, useCompanyNews, useRefreshCompanyNews } from '../../api/useGraph.ts';
 import { SECTOR_COLORS, DEFAULT_COLOR } from './GraphControls.tsx';
 
@@ -10,7 +22,7 @@ interface NewsDrawerProps {
   onDeepDive?: (ticker: string) => void;
 }
 
-type NewsTab = 'company' | 'competitors' | 'sector';
+type NewsTab = 'company' | 'competitors' | 'supply_chain' | 'sector';
 
 export const NewsDrawer: React.FC<NewsDrawerProps> = ({
   ticker,
@@ -38,6 +50,8 @@ export const NewsDrawer: React.FC<NewsDrawerProps> = ({
       ? news?.company_news ?? []
       : activeTab === 'competitors'
       ? news?.competitor_news ?? []
+      : activeTab === 'supply_chain'
+      ? news?.supply_chain_news ?? []
       : news?.sector_news ?? [];
 
   return (
@@ -127,14 +141,70 @@ export const NewsDrawer: React.FC<NewsDrawerProps> = ({
             </div>
           </div>
         )}
+
+        {/* Upstream Suppliers */}
+        {company?.suppliers && company.suppliers.length > 0 && (
+          <div className="mt-3 pt-2.5 border-t border-slate-800/40">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-400 flex items-center space-x-1">
+                <ArrowDownRight className="w-3 h-3 text-amber-400" />
+                <span>Upstream Suppliers ({company.suppliers.length})</span>
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {company.suppliers.map((supp) => (
+                <button
+                  key={supp.ticker}
+                  onClick={() => onSelectCompany(supp.ticker)}
+                  className="group flex items-center space-x-1.5 px-2 py-1 rounded-lg bg-amber-950/30 hover:bg-amber-900/40 border border-amber-500/30 text-xs font-medium text-amber-200 hover:text-white transition-all shadow-sm"
+                  title={`${supp.name} supplies: ${supp.product_category}`}
+                >
+                  <span className="font-mono font-bold text-amber-300">{supp.ticker}</span>
+                  <span className="text-[11px] text-amber-400/80 group-hover:text-amber-200 hidden sm:inline">
+                    {supp.name.split(' ')[0]}
+                  </span>
+                  <ArrowRight className="w-2.5 h-2.5 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-amber-400" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Downstream Customers */}
+        {company?.customers && company.customers.length > 0 && (
+          <div className="mt-3 pt-2.5 border-t border-slate-800/40">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-400 flex items-center space-x-1">
+                <ArrowUpRight className="w-3 h-3 text-emerald-400" />
+                <span>Downstream Customers ({company.customers.length})</span>
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {company.customers.map((cust) => (
+                <button
+                  key={cust.ticker}
+                  onClick={() => onSelectCompany(cust.ticker)}
+                  className="group flex items-center space-x-1.5 px-2 py-1 rounded-lg bg-emerald-950/30 hover:bg-emerald-900/40 border border-emerald-500/30 text-xs font-medium text-emerald-200 hover:text-white transition-all shadow-sm"
+                  title={`${cust.name} buys: ${cust.product_category}`}
+                >
+                  <span className="font-mono font-bold text-emerald-300">{cust.ticker}</span>
+                  <span className="text-[11px] text-emerald-400/80 group-hover:text-emerald-200 hidden sm:inline">
+                    {cust.name.split(' ')[0]}
+                  </span>
+                  <ArrowRight className="w-2.5 h-2.5 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-emerald-400" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tabs & Controls */}
       <div className="px-5 py-2.5 border-b border-slate-800/80 bg-slate-900/60 flex items-center justify-between">
-        <div className="flex items-center space-x-1 bg-slate-950/60 p-0.5 rounded-lg border border-slate-800/60">
+        <div className="flex items-center space-x-1 bg-slate-950/60 p-0.5 rounded-lg border border-slate-800/60 overflow-x-auto">
           <button
             onClick={() => setActiveTab('company')}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
               activeTab === 'company'
                 ? 'bg-slate-800 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -144,7 +214,7 @@ export const NewsDrawer: React.FC<NewsDrawerProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('competitors')}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
               activeTab === 'competitors'
                 ? 'bg-slate-800 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -153,8 +223,19 @@ export const NewsDrawer: React.FC<NewsDrawerProps> = ({
             Competitors ({news?.competitor_news?.length ?? 0})
           </button>
           <button
+            onClick={() => setActiveTab('supply_chain')}
+            className={`flex items-center space-x-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+              activeTab === 'supply_chain'
+                ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Link2 className="w-3 h-3 text-emerald-400" />
+            <span>Supply Chain ({news?.supply_chain_news?.length ?? 0})</span>
+          </button>
+          <button
             onClick={() => setActiveTab('sector')}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
               activeTab === 'sector'
                 ? 'bg-slate-800 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -219,6 +300,19 @@ export const NewsDrawer: React.FC<NewsDrawerProps> = ({
                     {article.entity_ticker && (
                       <span className="font-mono font-bold text-cyan-400 text-[10px]">
                         ${article.entity_ticker}
+                      </span>
+                    )}
+                    {activeTab === 'supply_chain' && article.entity_ticker && (
+                      <span
+                        className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${
+                          company?.suppliers?.some((s) => s.ticker === article.entity_ticker)
+                            ? 'bg-amber-950/60 text-amber-300 border border-amber-500/30'
+                            : 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/30'
+                        }`}
+                      >
+                        {company?.suppliers?.some((s) => s.ticker === article.entity_ticker)
+                          ? 'SUPPLIER'
+                          : 'CUSTOMER'}
                       </span>
                     )}
                   </div>

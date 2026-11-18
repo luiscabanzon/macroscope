@@ -10,6 +10,7 @@ from app.db.models import (
     FetchLogRecord,
     NewsArticleRecord,
     ObservationRecord,
+    SupplyChainRecord,
 )
 
 INIT_SQL = """
@@ -63,7 +64,22 @@ CREATE TABLE IF NOT EXISTS company_competitors (
 
 CREATE INDEX IF NOT EXISTS idx_comp_lookup ON company_competitors(company_ticker);
 
--- 3. Cached Public RSS News Articles
+-- 3. Company Supply Chain & Customer-Supplier Linkages
+CREATE TABLE IF NOT EXISTS company_supply_chain (
+    supplier_ticker TEXT NOT NULL,
+    customer_ticker TEXT NOT NULL,
+    product_category TEXT NOT NULL,
+    tier_or_importance TEXT NOT NULL DEFAULT 'critical',
+    weight REAL DEFAULT 1.0,
+    PRIMARY KEY (supplier_ticker, customer_ticker),
+    FOREIGN KEY (supplier_ticker) REFERENCES companies(ticker),
+    FOREIGN KEY (customer_ticker) REFERENCES companies(ticker)
+);
+
+CREATE INDEX IF NOT EXISTS idx_supply_supplier ON company_supply_chain(supplier_ticker);
+CREATE INDEX IF NOT EXISTS idx_supply_customer ON company_supply_chain(customer_ticker);
+
+-- 4. Cached Public RSS News Articles
 CREATE TABLE IF NOT EXISTS news_articles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guid TEXT UNIQUE NOT NULL,
@@ -323,6 +339,31 @@ async def upsert_competitors(
     return len(params)
 
 
+async def upsert_supply_chain(
+    conn: aiosqlite.Connection,
+    links: list[SupplyChainRecord],
+) -> int:
+    """Batch insert or update company supply chain linkages."""
+    if not links:
+        return 0
+
+    query = """
+    INSERT INTO company_supply_chain (supplier_ticker, customer_ticker, product_category, tier_or_importance, weight)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(supplier_ticker, customer_ticker) DO UPDATE SET
+        product_category = excluded.product_category,
+        tier_or_importance = excluded.tier_or_importance,
+        weight = excluded.weight;
+    """
+    params = [
+        (s.supplier_ticker, s.customer_ticker, s.product_category, s.tier_or_importance, s.weight)
+        for s in links
+    ]
+    await conn.executemany(query, params)
+    await conn.commit()
+    return len(params)
+
+
 async def query_companies(
     conn: aiosqlite.Connection,
     sector: str | None = None,
@@ -408,22 +449,91 @@ async def get_company_competitors(
         ]
 
 
+async def get_company_supply_chain(
+    conn: aiosqlite.Connection,
+    ticker: str,
+) -> dict[str, list[dict]]:
+    """Retrieve all upstream suppliers and downstream customers for a company."""
+    clean_ticker = ticker.upper()
+
+    # 1. Upstream Suppliers (who supplies this company: customer_ticker = clean_ticker)
+    supplier_query = """
+    SELECT c.ticker, c.name, c.sector, c.industry, c.country_code, c.market_cap_tier, c.description,
+           sc.product_category, sc.tier_or_importance, sc.weight
+    FROM company_supply_chain sc
+    JOIN companies c ON sc.supplier_ticker = c.ticker
+    WHERE sc.customer_ticker = ?
+    ORDER BY sc.weight DESC, c.name ASC
+    """
+    suppliers: list[dict] = []
+    async with conn.execute(supplier_query, (clean_ticker,)) as cursor:
+        rows = await cursor.fetchall()
+        for r in rows:
+            suppliers.append({
+                "ticker": r["ticker"],
+                "name": r["name"],
+                "sector": r["sector"],
+                "industry": r["industry"],
+                "country_code": r["country_code"],
+                "market_cap_tier": r["market_cap_tier"],
+                "description": r["description"],
+                "product_category": r["product_category"],
+                "tier_or_importance": r["tier_or_importance"],
+                "weight": float(r["weight"]),
+                "role": "supplier",
+            })
+
+    # 2. Downstream Customers (who buys from this company: supplier_ticker = clean_ticker)
+    customer_query = """
+    SELECT c.ticker, c.name, c.sector, c.industry, c.country_code, c.market_cap_tier, c.description,
+           sc.product_category, sc.tier_or_importance, sc.weight
+    FROM company_supply_chain sc
+    JOIN companies c ON sc.customer_ticker = c.ticker
+    WHERE sc.supplier_ticker = ?
+    ORDER BY sc.weight DESC, c.name ASC
+    """
+    customers: list[dict] = []
+    async with conn.execute(customer_query, (clean_ticker,)) as cursor:
+        rows = await cursor.fetchall()
+        for r in rows:
+            customers.append({
+                "ticker": r["ticker"],
+                "name": r["name"],
+                "sector": r["sector"],
+                "industry": r["industry"],
+                "country_code": r["country_code"],
+                "market_cap_tier": r["market_cap_tier"],
+                "description": r["description"],
+                "product_category": r["product_category"],
+                "tier_or_importance": r["tier_or_importance"],
+                "weight": float(r["weight"]),
+                "role": "customer",
+            })
+
+    return {"suppliers": suppliers, "customers": customers}
+
+
 async def get_graph_elements(
     conn: aiosqlite.Connection,
     sector: str | None = None,
+    network_type: str = "all",
 ) -> tuple[list[dict], list[dict], list[str]]:
-    """Retrieve graph nodes and edges with competitor count metadata."""
+    """Retrieve graph nodes and edges with competitor and supply chain counts."""
     # 1. Fetch distinct sectors
     async with conn.execute("SELECT DISTINCT sector FROM companies ORDER BY sector ASC") as cursor:
         sector_rows = await cursor.fetchall()
         sectors = [r["sector"] for r in sector_rows]
 
-    # 2. Fetch nodes with their competitor count
+    # 2. Fetch nodes with competitor and supply chain connection counts
     node_query = """
     SELECT c.ticker, c.name, c.sector, c.industry, c.country_code, c.market_cap_tier, c.description,
-           count(cc.competitor_ticker) as competitor_count
+           count(DISTINCT cc.competitor_ticker) as competitor_count,
+           count(DISTINCT sc_supp.supplier_ticker) as supplier_count,
+           count(DISTINCT sc_cust.customer_ticker) as customer_count
     FROM companies c
     LEFT JOIN company_competitors cc ON c.ticker = cc.company_ticker
+    LEFT JOIN company_supply_chain sc_supp ON c.ticker = sc_supp.customer_ticker
+    LEFT JOIN company_supply_chain sc_cust ON c.ticker = sc_cust.supplier_ticker
     """
     params: list[str] = []
     if sector:
@@ -443,30 +553,55 @@ async def get_graph_elements(
                 "country_code": r["country_code"],
                 "market_cap_tier": r["market_cap_tier"],
                 "competitor_count": int(r["competitor_count"]),
+                "supplier_count": int(r["supplier_count"]),
+                "customer_count": int(r["customer_count"]),
                 "description": r["description"],
             }
             for r in node_rows
         ]
 
     included_tickers = {n["ticker"] for n in nodes}
+    edges: list[dict] = []
 
-    # 3. Fetch edges
-    edge_query = """
-    SELECT company_ticker, competitor_ticker, relationship_type, weight
-    FROM company_competitors
-    """
-    async with conn.execute(edge_query) as cursor:
-        edge_rows = await cursor.fetchall()
-        edges = [
-            {
-                "source": r["company_ticker"],
-                "target": r["competitor_ticker"],
-                "relationship_type": r["relationship_type"],
-                "weight": float(r["weight"]),
-            }
-            for r in edge_rows
-            if r["company_ticker"] in included_tickers and r["competitor_ticker"] in included_tickers
-        ]
+    # 3. Fetch competitor rivalry edges
+    if network_type in ("all", "competition"):
+        edge_query = """
+        SELECT company_ticker, competitor_ticker, relationship_type, weight
+        FROM company_competitors
+        """
+        async with conn.execute(edge_query) as cursor:
+            edge_rows = await cursor.fetchall()
+            for r in edge_rows:
+                if r["company_ticker"] in included_tickers and r["competitor_ticker"] in included_tickers:
+                    edges.append({
+                        "source": r["company_ticker"],
+                        "target": r["competitor_ticker"],
+                        "relationship_type": r["relationship_type"],
+                        "weight": float(r["weight"]),
+                        "is_directed": False,
+                        "relationship_category": "competition",
+                    })
+
+    # 4. Fetch supply chain dependency edges (supplier -> customer)
+    if network_type in ("all", "supply_chain"):
+        sc_query = """
+        SELECT supplier_ticker, customer_ticker, product_category, tier_or_importance, weight
+        FROM company_supply_chain
+        """
+        async with conn.execute(sc_query) as cursor:
+            sc_rows = await cursor.fetchall()
+            for r in sc_rows:
+                if r["supplier_ticker"] in included_tickers and r["customer_ticker"] in included_tickers:
+                    edges.append({
+                        "source": r["supplier_ticker"],
+                        "target": r["customer_ticker"],
+                        "relationship_type": "supply_chain",
+                        "product_category": r["product_category"],
+                        "tier_or_importance": r["tier_or_importance"],
+                        "weight": float(r["weight"]),
+                        "is_directed": True,
+                        "relationship_category": "supply_chain",
+                    })
 
     return nodes, edges, sectors
 
@@ -507,6 +642,31 @@ async def upsert_news_articles(
             a.fetched_at,
         )
         for a in articles
+    ]
+    await conn.executemany(query, params)
+    await conn.commit()
+    return len(params)
+
+
+async def upsert_supply_chain(
+    conn: aiosqlite.Connection,
+    links: list[SupplyChainRecord],
+) -> int:
+    """Batch insert or update company supply chain linkages."""
+    if not links:
+        return 0
+
+    query = """
+    INSERT INTO company_supply_chain (supplier_ticker, customer_ticker, product_category, tier_or_importance, weight)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(supplier_ticker, customer_ticker) DO UPDATE SET
+        product_category = excluded.product_category,
+        tier_or_importance = excluded.tier_or_importance,
+        weight = excluded.weight;
+    """
+    params = [
+        (s.supplier_ticker, s.customer_ticker, s.product_category, s.tier_or_importance, s.weight)
+        for s in links
     ]
     await conn.executemany(query, params)
     await conn.commit()
